@@ -1,12 +1,11 @@
 import streamlit as st
-from groq import Groq
-import os
-from dotenv import load_dotenv
+import ollama
 
 # ═══════════════════════════════════════════════════════════════
-# 1. ENVIRONMENT SETUP
+# 1. OLLAMA CONFIGURATION
 # ═══════════════════════════════════════════════════════════════
-load_dotenv()
+
+OLLAMA_MODEL = "llama3.1:8b"
 
 # ═══════════════════════════════════════════════════════════════
 # 2. PAGE CONFIGURATION
@@ -116,15 +115,10 @@ with st.sidebar:
         st.rerun()
 
 # ═══════════════════════════════════════════════════════════════
-# 6. API KEY VERIFICATION
+# 6. OLLAMA CONFIGURATION
 # ═══════════════════════════════════════════════════════════════
-api_key = os.getenv("GROK-API-KEY")
-if not api_key:
-    st.error("⚠️ **API Key Not Found!**")
-    st.info("Please ensure your `.env` file contains: `GROK-API-KEY=your_api_key_here`")
-    st.stop()
 
-client = Groq(api_key=api_key)
+OLLAMA_MODEL = "llama3.1:8b"
 
 # ═══════════════════════════════════════════════════════════════
 # 7. CURRICULUM DATABASE (Sample - Expand This)
@@ -601,24 +595,25 @@ if prompt:
         
         try:
             # Create streaming request with optimized parameters
-            stream = client.chat.completions.create(
-                model="moonshotai/kimi-k2-instruct-0905",
+            # Create streaming request using Ollama
+            stream = ollama.chat(
+                model=OLLAMA_MODEL,
                 messages=st.session_state.message,
-                max_completion_tokens=4096,  # Increased for detailed explanations
-                temperature=0.6,  # Slightly lower for more consistent educational content
-                top_p=0.9,
-                stream=True
+                stream=True,
+                options={
+                    "temperature": 0.6,
+                    "top_p": 0.9,
+                    "num_predict": 4096
+                }
             )
             
-            # Process the stream
+            # Process the Ollama stream
             for chunk in stream:
-                if (chunk.choices 
-                    and chunk.choices[0].delta 
-                    and chunk.choices[0].delta.content):
-                    
-                    token = chunk.choices[0].delta.content
+                token = chunk["message"]["content"]
+            
+                if token:
                     full_response += token
-                    placeholder.markdown(full_response + "▌")  # Cursor effect
+                    placeholder.markdown(full_response + "▌")
             
             # Remove cursor and show final response
             placeholder.markdown(full_response)
@@ -632,8 +627,9 @@ if prompt:
         except Exception as e:
             error_message = f"❌ **An error occurred:** {str(e)}\n\n"
             error_message += "**Possible solutions:**\n"
-            error_message += "- Check your internet connection\n"
-            error_message += "- Verify your API key is valid\n"
+            error_message += "- Make sure Ollama is running\n"
+            error_message += "- Make sure llama3.1:8b is installed\n"
+            error_message += "- Run: ollama list\n"
             error_message += "- Try asking your question in a different way\n"
             error_message += "- If the issue persists, please report it using the feedback option"
             
